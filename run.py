@@ -110,6 +110,24 @@ USER_AGENT = (
 
 SAM_API_KEY = os.environ.get("SAM_API_KEY", "").strip()
 
+# --- Email config -----------------------------------------------------------
+#
+# Required env vars to send: SMTP_USER, SMTP_PASS, EMAIL_TO
+# Optional: SMTP_HOST (default smtp.gmail.com), SMTP_PORT (default 587),
+#           EMAIL_FROM (default = SMTP_USER), EMAIL_DRY_RUN=1 to skip the
+#           actual send and print what would have gone out.
+#
+# Gmail: enable 2FA, then generate an App Password and use that as SMTP_PASS.
+
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
+EMAIL_FROM = os.environ.get("EMAIL_FROM", "").strip() or SMTP_USER
+EMAIL_TO = os.environ.get("EMAIL_TO", "").strip()
+EMAIL_CC = [a.strip() for a in os.environ.get("EMAIL_CC", "").split(",") if a.strip()]
+EMAIL_DRY_RUN = os.environ.get("EMAIL_DRY_RUN", "").strip() not in ("", "0", "false", "False")
+
 # --- HTTP -------------------------------------------------------------------
 
 
@@ -415,6 +433,121 @@ def save_state(state: dict) -> None:
     STATE_FILE.write_text(json.dumps(state, indent=2, sort_keys=True))
 
 
+# --- Email ------------------------------------------------------------------
+
+
+def email_configured() -> tuple[bool, str]:
+    """Return (ok, reason). If ok=False, reason explains what's missing."""
+    if not SMTP_USER:
+        return False, "SMTP_USER not set"
+    if not SMTP_PASS:
+        return False, "SMTP_PASS not set"
+    if not EMAIL_TO:
+        return False, "EMAIL_TO not set"
+    return True, ""
+
+
+def _format_lead_html(lead: dict) -> str:
+    score = lead["score"]
+    color = "#2c9c4a" if score >= 75 else "#d49232" if score >= 50 else "#999"
+    src = lead["source"]
+    src_color = {"sam.gov": "#0a4d8c", "usaspending.gov": "#2c7a47",
+                  "sec_edgar": "#8c6a0a"}.get(src, "#4a5765")
+    desc = (lead.get("description") or "")[:600]
+    if lead.get("description") and len(lead["description"]) > 600:
+        desc += "..."
+    matched = lead.get("matched_keywords") or "(none)"
+    date = lead.get("deadline") or lead.get("posted_date") or ""
+
+    def esc(s: str) -> str:
+        return (str(s or "")
+                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+    return f"""<!DOCTYPE html>
+<html><body style="font-family: -apple-system, Segoe UI, Arial, sans-serif; color: #1a2332; max-width: 640px;">
+  <div style="border-left: 4px solid {color}; padding: 12px 16px; background: #f4f6f8;">
+    <div style="font-size: 12px; color: #6b7785; text-transform: uppercase; letter-spacing: 0.5px;">
+      New LDL lead &middot; score
+      <span style="color: {color}; font-weight: 700; font-size: 14px;">{score}</span>
+      &middot;
+      <span style="color: {src_color}; font-weight: 600;">{esc(src)}</span>
+      &middot; {esc(date)}
+    </div>
+    <h2 style="margin: 8px 0 4px 0; font-size: 18px;">
+      <a href="{esc(lead.get('url') or '#')}" style="color: #0a4d8c; text-decoration: none;">
+        {esc(lead.get('title'))}
+      </a>
+    </h2>
+    <div style="color: #4a5765; font-size: 14px; margin-bottom: 12px;">
+      {esc(lead.get('organization'))}
+    </div>
+    <div style="font-size: 13px; color: #1a2332; line-height: 1.5; margin-bottom: 12px;">
+      {esc(desc)}
+    </div>
+    <div style="font-size: 12px; color: #6b7785;">
+      Matched keywords: <strong>{esc(matched)}</strong>
+    </div>
+  </div>
+  <div style="font-size: 11px; color: #999; margin-top: 12px;">
+    Sent by LDL Lead Monitor &middot; <a href="{esc(lead.get('url') or '#')}">view source</a>
+  </div>
+</body></html>"""
+
+
+def _format_lead_text(lead: dict) -> str:
+    return (
+        f"New LDL lead (score {lead['score']}, source {lead['source']})\n\n"
+        f"{lead.get('title')}\n"
+        f"{lead.get('organization')}\n"
+        f"{lead.get('deadline') or lead.get('posted_date') or ''}\n\n"
+        f"{(lead.get('description') or '')[:600]}\n\n"
+        f"Matched: {lead.get('matched_keywords') or '(none)'}\n\n"
+        f"Link: {lead.get('url')}\n"
+    )
+
+
+def send_lead_email(lead: dict) -> bool:
+    """Send a single-lead email. Returns True on success.
+
+    Honours EMAIL_DRY_RUN — when set, logs and returns True without sending.
+    """
+    import smtplib
+    from email.message import EmailMessage
+
+    subject = f"[LDL Lead {lead['score']}] {lead.get('title') or '(untitled)'}"
+    # Email subjects must be ASCII-safe enough for headers — strip non-Latin1.
+    subject = subject.encode("ascii", "replace").decode("ascii")[:180]
+
+    recipients = [EMAIL_TO] + EMAIL_CC
+
+    if EMAIL_DRY_RUN:
+        cc_str = f" cc={', '.join(EMAIL_CC)}" if EMAIL_CC else ""
+        print(f"  [email DRY-RUN] would send to {EMAIL_TO}{cc_str}: {subject!r}",
+              file=sys.stderr)
+        return True
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_FROM
+    msg["To"] = EMAIL_TO
+    if EMAIL_CC:
+        msg["Cc"] = ", ".join(EMAIL_CC)
+    msg.set_content(_format_lead_text(lead))
+    msg.add_alternative(_format_lead_html(lead), subtype="html")
+
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            # send_message routes To + Cc automatically when the Cc header is set,
+            # but pass recipients explicitly to be defensive.
+            s.send_message(msg, to_addrs=recipients)
+        return True
+    except (smtplib.SMTPException, OSError) as e:
+        print(f"  [email] failed for {lead.get('_id')}: {e}", file=sys.stderr)
+        return False
+
+
 # --- HTML injection ---------------------------------------------------------
 
 
@@ -477,6 +610,9 @@ def main() -> int:
         deduped.append(lead)
 
     state = load_state()
+    prev_emailed = set(state.get("emailed_ids", []))
+    # Carry forward "seen_ids" for visibility, but it no longer drives the
+    # "new" badge — that's now sent_in_digest = (id in emailed_ids).
     prev_seen = set(state.get("seen_ids", []))
 
     enriched: list[dict] = []
@@ -488,13 +624,33 @@ def main() -> int:
             lead.get("title"), lead.get("description"), lead.get("organization"),
         ])))
         lead["matched_keywords"] = ", ".join(primary + secondary)
-        lead["sent_in_digest"] = lead["_id"] in prev_seen
         enriched.append(lead)
 
     enriched.sort(key=lambda l: (-l["score"], l.get("posted_date") or ""))
     enriched = enriched[:MAX_LEADS]
 
-    # Update state with everything we just emitted so they're "not new" next run.
+    # Send one email per never-before-emailed lead.
+    ok, reason = email_configured()
+    if not ok:
+        print(f"  [email] skipped - {reason}", file=sys.stderr)
+        newly_emailed: set[str] = set()
+    else:
+        unemailed = [l for l in enriched if l["_id"] not in prev_emailed]
+        print(f"  [email] {len(unemailed)} new lead(s) to send"
+              + (" (DRY RUN)" if EMAIL_DRY_RUN else ""))
+        newly_emailed = set()
+        for lead in unemailed:
+            if send_lead_email(lead):
+                newly_emailed.add(lead["_id"])
+
+    # sent_in_digest now reflects email status: True iff the lead has been
+    # successfully emailed at any point (this run or previous).
+    emailed_after = prev_emailed | newly_emailed
+    for lead in enriched:
+        lead["sent_in_digest"] = lead["_id"] in emailed_after
+
+    # Persist state. Keep both id sets so we can audit later.
+    state["emailed_ids"] = sorted(emailed_after)
     state["seen_ids"] = sorted({l["_id"] for l in enriched} | prev_seen)
     state["last_run"] = _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
     save_state(state)
@@ -504,6 +660,9 @@ def main() -> int:
 
     write_dashboard(public)
     print(f"  -> wrote {len(public)} leads to {INDEX_HTML.name}")
+    if ok:
+        cc_note = f" (cc: {', '.join(EMAIL_CC)})" if EMAIL_CC else ""
+        print(f"  -> emailed {len(newly_emailed)} new lead(s) to {EMAIL_TO}{cc_note}")
     return 0
 
 

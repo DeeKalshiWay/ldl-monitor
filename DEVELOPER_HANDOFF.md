@@ -19,7 +19,15 @@ No external dependencies. Python stdlib only.
 # (optional) get a SAM.gov key from https://sam.gov — without it, SAM is skipped
 export SAM_API_KEY="..."
 
-python run.py        # fetch, score, rewrite index.html
+# (optional) email new leads. SMTP_USER, SMTP_PASS, EMAIL_TO required; CC optional.
+# For Gmail, generate an App Password (account must have 2FA enabled).
+export SMTP_USER="bot@oilservicefuels.com"
+export SMTP_PASS="<gmail app password>"
+export EMAIL_TO="dennis@oilservicefuels.com"
+export EMAIL_CC="alan@oilservicefuels.com"
+# export EMAIL_DRY_RUN=1   # to test without actually sending
+
+python run.py        # fetch, score, email, rewrite index.html
 start index.html     # open the dashboard (use `open` on macOS)
 ```
 
@@ -56,6 +64,12 @@ All knobs are constants at the top of `run.py`:
 | `MAX_LEADS` | Hard cap on rendered leads |
 | `USER_AGENT` | Sent on every HTTP request (SEC requires real contact info) |
 | `SAM_API_KEY` env var | Required for SAM.gov; source skipped if absent |
+| `SMTP_USER` / `SMTP_PASS` env vars | SMTP login. Gmail requires an [App Password](https://support.google.com/accounts/answer/185833). |
+| `SMTP_HOST` / `SMTP_PORT` env vars | Default `smtp.gmail.com:587` (STARTTLS). |
+| `EMAIL_FROM` env var | Optional, defaults to `SMTP_USER`. |
+| `EMAIL_TO` env var | Primary recipient. Required to send. |
+| `EMAIL_CC` env var | Comma-separated list of CC recipients. Optional. |
+| `EMAIL_DRY_RUN` env var | Set to `1` to log emails without actually sending. |
 
 ## Scoring
 
@@ -124,16 +138,24 @@ If `run.py` changes a field name, the column silently goes blank — there's no 
 - Click any column header to sort; score defaults to desc, others asc
 - CSV export of currently-visible rows (`ldl_leads_<YYYY-MM-DD>.csv`)
 
-## State + "new" badge
+## State, emailing, and the "new" badge
 
-`.ldl_state.json` stores the set of lead `_id`s ever published. On each run:
+`.ldl_state.json` stores two id sets:
 
-1. Load previous IDs.
-2. Any lead whose `_id` is in the set gets `sent_in_digest: true` (no "new" badge).
-3. New leads get `sent_in_digest: false`.
-4. After publishing, the state file is updated with the current run's IDs.
+- **`emailed_ids`** — leads we've successfully emailed. Drives `sent_in_digest` on the dashboard (the "new" badge clears once the email goes out).
+- **`seen_ids`** — every lead ever published. Audit trail only; doesn't drive UI.
 
-Note: the field is named `sent_in_digest` for compatibility with the original schema, but the script doesn't actually send a digest — it just tracks "previously seen." If you wire up an email digest later, flip the flag *after* sending, not at publish time.
+Per-run flow:
+
+1. Fetch + score → final `enriched` list.
+2. If `email_configured()`, loop through leads whose `_id` is **not** in `emailed_ids` and call `send_lead_email()`. Successful sends are added to `emailed_ids`.
+3. Set `sent_in_digest = (_id in emailed_ids)` on every lead.
+4. Persist state.
+5. Write the dashboard with the updated `sent_in_digest` values.
+
+If email is unconfigured, step 2 is skipped — every lead remains `sent_in_digest: false` and shows the "new" badge until creds are provided. This is intentional: it's a visible signal that the email pipeline isn't running.
+
+`EMAIL_DRY_RUN=1` keeps step 2 active but skips the actual SMTP send. The state file *still* gets updated as if the email succeeded — useful for testing, less useful if you want to re-test the same lead (delete `.ldl_state.json` first).
 
 ## Known environment quirks
 
