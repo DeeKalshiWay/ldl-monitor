@@ -1,0 +1,14 @@
+# Runtime state (regenerated each run)
+.ldl_state.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
