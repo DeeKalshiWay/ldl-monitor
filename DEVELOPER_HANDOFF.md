@@ -47,23 +47,32 @@ All knobs are constants at the top of `run.py`:
 
 | Constant | Purpose |
 |---|---|
-| `KEYWORDS` | Drives all three searches and keyword-match scoring |
+| `PRIMARY_KEYWORDS` | Direct diesel-additive terminology (cetane improver, fuel biocide, etc.). High-weight matches. |
+| `SECONDARY_KEYWORDS` | Use-case context (microbial contamination, bulk diesel storage, fleet fuel). Low-weight matches. |
+| `DOMAIN_ANCHORS` | A lead must mention diesel/biodiesel/ULSD/etc. to be considered in-domain. Hard filter. |
+| `NEGATIVE_KEYWORDS` | Wrong-domain terms (wildfire, water treatment, jet fuel, VCI paper). Reject on match. |
 | `LOOKBACK_DAYS` | How far back each fetcher looks |
 | `SCORE_FLOOR` | Drop anything below this from the dashboard |
 | `MAX_LEADS` | Hard cap on rendered leads |
 | `USER_AGENT` | Sent on every HTTP request (SEC requires real contact info) |
-| `SAM_API_KEY` env var | Required for SAM.gov; sources skipped if absent |
+| `SAM_API_KEY` env var | Required for SAM.gov; source skipped if absent |
 
 ## Scoring
 
-`score_lead()` in `run.py` returns 0–100:
+`score_lead()` in `run.py` returns 0–100. The pipeline is:
 
-- **Base 30**, plus **+8 per matched keyword** (capped at 6 matches → +48)
-- **+25** if `source == sam.gov` (live RFPs are most actionable)
-- **+10** if `source == usaspending.gov` (awarded contracts — competitor/customer signal)
-- **+15** if posted in the last 7 days, **+5** within 21 days, **-10** if older than 60 days
+1. **Negative keyword check** — any match in `NEGATIVE_KEYWORDS` → score 0 (reject).
+2. **Domain anchor check** — lead must contain a `DOMAIN_ANCHORS` term OR a self-anchored primary keyword (one that itself contains "diesel", "biodiesel", "cetane", or "lubricity"). Otherwise → score 0.
+3. **Tiered keyword score**:
+   - Base **30**
+   - **+12 per primary match**, capped at 6 → max +72
+   - **+4 per secondary match**, capped at 4 → max +16
+4. **Source weight**: +25 for `sam.gov`, +10 for `usaspending.gov`, 0 for `sec_edgar`.
+5. **Recency**: +15 within 7 days, +5 within 21 days, -10 older than 60 days.
 
-Anything below `SCORE_FLOOR` (default 35) is dropped.
+Anything below `SCORE_FLOOR` (default 50) is dropped.
+
+The two hard rejects (negative + anchor) exist because terms like "corrosion inhibitor" and "fuel treatment" appear in completely unrelated domains: water-system corrosion inhibitors, wildfire fuel-treatment programs, VCI packaging paper. The anchor check forces every surviving lead to mention diesel.
 
 ## Sources
 
@@ -139,8 +148,8 @@ Note: the field is named `sent_in_digest` for compatibility with the original sc
 ## Things to verify when you pick this up
 
 1. **Hosting target** — see above.
-2. **SAM.gov API key** — register one if missing; without it ~half the lead volume disappears.
-3. **Keyword list** — the seeded list in `run.py` covers obvious diesel-additive territory (biodiesel, ULSD, fuel stabilizer, emergency generators, fuel filters, microbial contamination). Tune to match the sales team's actual ICP.
+2. **SAM.gov API key is the critical missing piece.** Without it the monitor only sees *awarded* contracts (USAspending) and *securities filings* (EDGAR) — both lagging indicators. SAM.gov is the only source with *active* RFPs that can actually be bid on. Register at sam.gov and `export SAM_API_KEY=...`.
+3. **Keyword list** — tuned for diesel fuel additives (LDL's product). Edit `PRIMARY_KEYWORDS` / `SECONDARY_KEYWORDS` in `run.py` if the sales team's ICP shifts. If you broaden into gasoline or jet additives, remove "jet fuel" / "aviation fuel" / "kerosene" from `NEGATIVE_KEYWORDS`.
 4. **No tests.** The data contract is enforced by convention; eyeball the dashboard after schema changes.
 5. **No CSP / sanitization beyond `escapeHTML`** ([index.html:114](index.html)). Currently fine because all data is generator-controlled, but if you ever pipe in untrusted upstream content, audit the description and matched_keywords paths first.
 

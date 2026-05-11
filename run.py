@@ -23,35 +23,85 @@ INDEX_HTML = ROOT / "index.html"
 STATE_FILE = ROOT / ".ldl_state.json"
 
 # --- Configuration ----------------------------------------------------------
+#
+# This monitor is tuned for DIESEL FUEL ADDITIVES (LDL = Longer Diesel Life).
+#
+# PRIMARY_KEYWORDS — direct additive terminology. These are what we actually
+# sell against; matches score high.
+# SECONDARY_KEYWORDS — use-cases, problems, and market segments where additives
+# are typically needed. These help surface adjacent leads but don't dominate.
 
-KEYWORDS = [
-    "diesel fuel",
-    "diesel engine",
-    "biodiesel",
-    "fuel stabilizer",
+PRIMARY_KEYWORDS = [
+    "diesel fuel additive",
+    "diesel additive",
     "fuel additive",
+    "diesel treatment",
     "fuel treatment",
-    "ultra low sulfur diesel",
-    "ulsd",
+    "diesel stabilizer",
+    "fuel stabilizer",
+    "diesel conditioner",
+    "fuel conditioner",
+    "cetane improver",
+    "cetane booster",
+    "lubricity additive",
+    "lubricity improver",
+    "anti-gel",
+    "antigel",
+    "pour point depressant",
+    "cold flow improver",
+    "fuel biocide",
+    "diesel biocide",
+    "microbial inhibitor",
+    "demulsifier",
+    "corrosion inhibitor",
+    "deposit control additive",
+    "injector cleaner",
+    "detergent additive",
+]
+
+SECONDARY_KEYWORDS = [
+    "microbial contamination",
+    "algae in fuel",
+    "water in fuel",
     "fuel polishing",
+    "fuel sludge",
+    "diesel gelling",
+    "biodiesel stability",
     "fuel quality",
-    "fuel maintenance",
+    "fuel filter",
     "emergency generator",
     "standby generator",
-    "backup generator",
+    "bulk diesel storage",
+    "diesel storage tank",
+    "marine diesel",
     "fleet fuel",
-    "bulk fuel storage",
-    "fuel tank",
-    "diesel storage",
-    "microbial contamination",
-    "fuel filter",
-    "water in fuel",
-    "cetane",
-    "diesel performance",
+    "ultra low sulfur diesel",
+]
+
+# A lead must contain at least one domain anchor (or a self-anchored primary
+# keyword like "diesel additive") to be considered diesel-additive relevant.
+# Without this, "corrosion inhibitor" matches water-treatment chemicals,
+# "fuel treatment" matches wildfire vegetation programs, etc.
+DOMAIN_ANCHORS = [
+    "diesel", "biodiesel", "fuel oil", "heating oil",
+    "marine diesel", "off-road fuel", "ulsd", "#2 fuel", "no. 2 fuel",
+]
+
+# Reject leads that hit a primary keyword inside an unrelated domain.
+# These domains use words like "fuel" (wildfire vegetation) and
+# "corrosion inhibitor" (water systems, VCI packaging) without any
+# connection to diesel.
+NEGATIVE_KEYWORDS = [
+    "wildfire", "wildland", "vegetation", "forestry", "hazardous fuels",
+    "fuels reduction", "prescribed burn",
+    "vci paper", "volatile corrosion inhibitor",  # packaging treatment
+    "water treatment", "closed systems", "boiler water",
+    "wd-40", "penetrant",  # multipurpose sprays
+    "jet fuel", "aviation fuel", "kerosene",  # wrong fuel type
 ]
 
 LOOKBACK_DAYS = 30
-SCORE_FLOOR = 35  # drop anything below this
+SCORE_FLOOR = 50  # drop anything below this
 MAX_LEADS = 200  # hard cap on output
 
 USER_AGENT = (
@@ -95,8 +145,9 @@ def fetch_sam_gov() -> list[dict]:
     seen_ids: set[str] = set()
 
     # SAM's q= is a single string, OR-able with quotes — we issue one request
-    # per keyword to keep matches attributable.
-    for kw in KEYWORDS:
+    # per keyword to keep matches attributable. Primary terms only to stay
+    # within polite rate limits and keep the signal high.
+    for kw in PRIMARY_KEYWORDS:
         params = {
             "api_key": SAM_API_KEY,
             "q": f'"{kw}"',
@@ -145,7 +196,7 @@ def fetch_usaspending() -> list[dict]:
 
     body = json.dumps({
         "filters": {
-            "keywords": KEYWORDS,
+            "keywords": PRIMARY_KEYWORDS + SECONDARY_KEYWORDS,
             "time_period": [{"start_date": start, "end_date": end}],
             "award_type_codes": ["A", "B", "C", "D"],  # contracts
         },
@@ -203,8 +254,8 @@ def fetch_sec_edgar() -> list[dict]:
     leads: list[dict] = []
     seen_ids: set[str] = set()
 
-    # EDGAR rate-limits — keep this set narrow.
-    edgar_terms = [kw for kw in KEYWORDS if " " in kw]  # multi-word terms only
+    # EDGAR rate-limits — keep this set narrow. Primary, multi-word terms only.
+    edgar_terms = [kw for kw in PRIMARY_KEYWORDS if " " in kw]
 
     for kw in edgar_terms:
         params = {
@@ -285,25 +336,46 @@ def fetch_sec_edgar() -> list[dict]:
 # --- Scoring ----------------------------------------------------------------
 
 
-_WORD_RE = re.compile(r"[a-z0-9]+")
-
-
-def match_keywords(text: str) -> list[str]:
+def match_keywords(text: str) -> tuple[list[str], list[str]]:
+    """Return (primary_hits, secondary_hits) found in text."""
     if not text:
-        return []
+        return [], []
     t = text.lower()
-    hits = []
-    for kw in KEYWORDS:
-        if kw.lower() in t:
-            hits.append(kw)
-    return hits
+    primary = [kw for kw in PRIMARY_KEYWORDS if kw.lower() in t]
+    secondary = [kw for kw in SECONDARY_KEYWORDS if kw.lower() in t]
+    return primary, secondary
+
+
+# Primary keywords that are self-anchoring (already imply the diesel/fuel
+# domain on their own; don't need a separate anchor to count as relevant).
+_SELF_ANCHORED_PRIMARY = frozenset(
+    kw for kw in PRIMARY_KEYWORDS
+    if any(tok in kw.lower() for tok in ("diesel", "cetane", "lubricity", "biodiesel"))
+)
 
 
 def score_lead(lead: dict) -> int:
     blob = " ".join(filter(None, [lead.get("title"), lead.get("description"),
                                    lead.get("organization")]))
-    matches = match_keywords(blob)
-    score = 30 + min(len(matches), 6) * 8  # base + up to +48 for keyword density
+    blob_lower = blob.lower()
+    primary, secondary = match_keywords(blob)
+
+    # Hard reject: any negative keyword sinks the lead.
+    if any(neg in blob_lower for neg in NEGATIVE_KEYWORDS):
+        return 0
+
+    # Hard reject: must be in the diesel/fuel domain. Either a domain anchor
+    # is present OR at least one self-anchored primary keyword matched
+    # (e.g. "diesel additive" anchors itself).
+    has_anchor = any(a in blob_lower for a in DOMAIN_ANCHORS)
+    has_self_anchored = any(kw in _SELF_ANCHORED_PRIMARY for kw in primary)
+    if not has_anchor and not has_self_anchored:
+        return 0
+
+    # Tiered keyword score: primary terms dominate, secondary terms tilt.
+    score = 30
+    score += min(len(primary), 6) * 12     # cap +72 for direct additive matches
+    score += min(len(secondary), 4) * 4    # cap +16 for use-case context
 
     if lead["source"] == "sam.gov":
         score += 25  # active RFPs are most actionable
@@ -378,9 +450,10 @@ def _utc_now() -> dt.datetime:
 
 def main() -> int:
     print(f"LDL monitor - {_utc_now().strftime('%Y-%m-%dT%H:%M:%SZ')}")
-    print(f"  keywords:    {len(KEYWORDS)}")
-    print(f"  lookback:    {LOOKBACK_DAYS} days")
-    print(f"  score floor: {SCORE_FLOOR}")
+    print(f"  primary keywords:   {len(PRIMARY_KEYWORDS)} (additive terminology)")
+    print(f"  secondary keywords: {len(SECONDARY_KEYWORDS)} (use-case context)")
+    print(f"  lookback:           {LOOKBACK_DAYS} days")
+    print(f"  score floor:        {SCORE_FLOOR}")
 
     all_leads: list[dict] = []
     for label, fn in [("sam.gov", fetch_sam_gov),
@@ -411,11 +484,10 @@ def main() -> int:
         lead["score"] = score_lead(lead)
         if lead["score"] < SCORE_FLOOR:
             continue
-        lead["matched_keywords"] = ", ".join(
-            match_keywords(" ".join(filter(None, [lead.get("title"),
-                                                    lead.get("description"),
-                                                    lead.get("organization")])))
-        )
+        primary, secondary = match_keywords(" ".join(filter(None, [
+            lead.get("title"), lead.get("description"), lead.get("organization"),
+        ])))
+        lead["matched_keywords"] = ", ".join(primary + secondary)
         lead["sent_in_digest"] = lead["_id"] in prev_seen
         enriched.append(lead)
 
