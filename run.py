@@ -78,6 +78,23 @@ SECONDARY_KEYWORDS = [
     "ultra low sulfur diesel",
 ]
 
+# RWA / tokenization signal keywords. These ride along the existing EDGAR
+# search (with Form D added) so we surface securities offerings, RWA listings,
+# and tokenization activity in the fuel/energy space. Hits don't have to clear
+# the diesel domain anchor — they're flagged separately.
+RWA_KEYWORDS = [
+    "tokenized royalty",
+    "tokenized commodity",
+    "tokenized revenue",
+    "fuel royalty",
+    "diesel royalty",
+    "real world asset",
+    "rwa token",
+    "security token offering",
+    "fuel additive royalty",
+    "energy royalty token",
+]
+
 # A lead must contain at least one domain anchor (or a self-anchored primary
 # keyword like "diesel additive") to be considered diesel-additive relevant.
 # Without this, "corrosion inhibitor" matches water-treatment chemicals,
@@ -272,16 +289,21 @@ def fetch_sec_edgar() -> list[dict]:
     leads: list[dict] = []
     seen_ids: set[str] = set()
 
-    # EDGAR rate-limits — keep this set narrow. Primary, multi-word terms only.
-    edgar_terms = [kw for kw in PRIMARY_KEYWORDS if " " in kw]
+    # EDGAR rate-limits — keep this set narrow. Primary multi-word terms +
+    # RWA keywords. Form D added so we surface fresh securities offerings
+    # (including competitor tokenization plays).
+    edgar_terms = [kw for kw in PRIMARY_KEYWORDS if " " in kw] + RWA_KEYWORDS
 
     for kw in edgar_terms:
+        # RWA queries widen the form filter to include Form D (offering filings).
+        is_rwa = kw in RWA_KEYWORDS
+        forms = "8-K,10-K,10-Q,D,D/A" if is_rwa else "8-K,10-K,10-Q"
         params = {
             "q": f'"{kw}"',
             "dateRange": "custom",
             "startdt": start,
             "enddt": end,
-            "forms": "8-K,10-K,10-Q",
+            "forms": forms,
         }
         url = "https://efts.sec.gov/LATEST/search-index?" + urllib.parse.urlencode(params)
         try:

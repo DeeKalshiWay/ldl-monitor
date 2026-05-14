@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LDL Token — Investor Overview</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+         margin: 0; background: #f4f6f8; color: #1a2332; line-height: 1.6; }
+  header { background: #0a4d8c; color: white; padding: 24px 32px; }
+  header h1 { margin: 0 0 4px 0; font-size: 22px; }
+  header .meta { font-size: 13px; opacity: 0.85; }
+  header nav { margin-top: 12px; display: flex; gap: 16px; font-size: 13px; }
+  header nav a { color: white; opacity: 0.7; text-decoration: none; padding: 4px 10px;
+                  border-radius: 12px; }
+  header nav a:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+  header nav a.current { opacity: 1; background: rgba(255,255,255,0.15); font-weight: 600; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+  .hero { background: white; border-radius: 12px; padding: 48px 40px; margin-bottom: 24px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .hero .eyebrow { font-size: 11px; color: #6b7785; text-transform: uppercase;
+                    letter-spacing: 1.2px; font-weight: 600; margin-bottom: 12px; }
+  .hero h2 { font-size: 32px; line-height: 1.25; margin: 0 0 16px 0; color: #1a2332; }
+  .hero .lede { font-size: 16px; color: #4a5765; max-width: 720px; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+              margin-bottom: 24px; }
+  .stat-card { background: white; border-radius: 8px; padding: 20px 24px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .stat-card .num { font-size: 30px; font-weight: 700; color: #0a4d8c; line-height: 1.1; }
+  .stat-card .label { font-size: 12px; color: #6b7785; text-transform: uppercase;
+                       letter-spacing: 0.5px; margin-top: 6px; }
+  .stat-card .sublabel { font-size: 11px; color: #999; margin-top: 4px; }
+
+  section.block { background: white; border-radius: 12px; padding: 32px 40px;
+                   margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  section.block h3 { margin: 0 0 12px 0; font-size: 20px; }
+  section.block h4 { margin: 24px 0 8px 0; font-size: 14px; color: #4a5765;
+                      text-transform: uppercase; letter-spacing: 0.5px; }
+  section.block p { margin: 0 0 12px 0; color: #2d3748; font-size: 15px; }
+  section.block ul { margin: 0 0 12px 0; padding-left: 20px; color: #2d3748; font-size: 15px; }
+  section.block ul li { margin-bottom: 6px; }
+
+  table.terms { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.terms td { padding: 12px 16px; border-top: 1px solid #eef2f6;
+                    font-size: 14px; vertical-align: top; }
+  table.terms td:first-child { color: #6b7785; width: 38%; font-weight: 500; }
+  table.terms td:last-child { color: #1a2332; }
+  table.terms tr:first-child td { border-top: none; }
+  .tbd { background: #fef3c7; color: #92400e; padding: 1px 8px; border-radius: 10px;
+          font-size: 11px; font-weight: 600; }
+
+  .matrix-compare { width: 100%; border-collapse: collapse; margin-top: 12px;
+                     font-size: 13px; }
+  .matrix-compare th { background: #eef2f6; padding: 10px 12px; text-align: left;
+                        font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+                        color: #6b7785; border-bottom: 1px solid #d4dae0; }
+  .matrix-compare td { padding: 10px 12px; border-top: 1px solid #eef2f6;
+                        vertical-align: top; }
+  .matrix-compare tr.us { background: #e6f0fa; }
+  .matrix-compare tr.us td { font-weight: 600; color: #0a4d8c; }
+
+  .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .risk { background: #fff8f0; border-left: 3px solid #d49232; padding: 14px 16px;
+           border-radius: 6px; }
+  .risk h5 { margin: 0 0 4px 0; font-size: 13px; color: #8c4a0a; }
+  .risk p { margin: 0; font-size: 13px; color: #4a5765; line-height: 1.5; }
+
+  .cta { background: linear-gradient(135deg, #0a4d8c, #1a6db5); color: white;
+          border-radius: 12px; padding: 40px; text-align: center; margin-top: 24px; }
+  .cta h3 { margin: 0 0 8px 0; font-size: 22px; }
+  .cta p { margin: 0 0 20px 0; opacity: 0.9; font-size: 15px; }
+  .cta a.btn { display: inline-block; padding: 12px 28px; background: white;
+                color: #0a4d8c; text-decoration: none; border-radius: 6px;
+                font-weight: 700; font-size: 14px; }
+  .cta a.btn:hover { background: #eef2f6; }
+  .cta .contact { font-size: 13px; opacity: 0.85; margin-top: 14px; }
+
+  .disclosure { color: #6b7785; font-size: 11px; line-height: 1.5;
+                 padding: 20px 40px; max-width: 900px; margin: 24px auto 0 auto; }
+
+  footer { text-align: center; padding: 24px; color: #6b7785; font-size: 12px; }
+
+  @media (max-width: 720px) {
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .risk-grid { grid-template-columns: 1fr; }
+    .hero { padding: 32px 24px; }
+    .hero h2 { font-size: 24px; }
+    section.block { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>LDL Token — Investor Overview</h1>
+  <div class="meta">Oil Service Fuels, Inc. — Longer Diesel Life® · Tokenized revenue share · <span id="gen-date">2026-05-13</span></div>
+  <nav>
+    <a href="index.html">Leads</a>
+    <a href="competitors.html">Competitors</a>
+    <a href="battlecard.html">Battlecard</a>
+    <a href="investor.html" class="current">Investor</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="eyebrow">For accredited investors</div>
+    <h2>45 years of diesel fuel additive revenue, accessible as a tokenized royalty stream.</h2>
+    <p class="lede">
+      Longer Diesel Life® (LDL) is an EPA-registered diesel fuel additive manufactured by Oil Service Fuels, Inc. since 1981. The LDL Token offers fractional, on-chain exposure to a real-world revenue stream from a 45-year-old industrial product with a 1:1,000 treat rate and a defensible distribution model.
+    </p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="num">45</div>
+      <div class="label">Years in operation</div>
+      <div class="sublabel">Founded 1981, Wyoming corp.</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">1:1,000</div>
+      <div class="label">Treat rate</div>
+      <div class="sublabel">1 gal LDL treats 1,000 gal diesel</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">EPA</div>
+      <div class="label">Registered additive</div>
+      <div class="sublabel">40 CFR Part 79 compliant</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">100M+</div>
+      <div class="label">Gallons treated</div>
+      <div class="sublabel">Lifetime cumulative (company claim)</div>
+    </div>
+  </div>
+
+  <section class="block">
+    <h3>Track record</h3>
+    <p>
+      Oil Service Fuels, Inc. has manufactured Longer Diesel Life® continuously since 1981 — 45 years across multiple diesel-fuel regulatory regimes (low sulfur → ULSD → biodiesel blends) without a formula recall, EPA enforcement action, or class-action liability event.
+    </p>
+    <p>
+      LDL is sold direct from the manufacturer through founder-led commercial relationships. The company holds an active EPA fuel-additive registration under 40 CFR Part 79 and has historically targeted bulk-fuel buyers across autos, pickups, heavy construction, mining, agriculture, generators, locomotives, and marine.
+    </p>
+
+    <h4>Leadership</h4>
+    <ul>
+      <li><strong>Alan Epler</strong> — President. Direct commercial contact since the company's founding era. Established 45-year founder-led continuity through three diesel-regulatory transitions.</li>
+    </ul>
+
+    <h4>Manufacturing &amp; legal</h4>
+    <ul>
+      <li>Wyoming C-corporation, HQ in Hillsdale, WY (PO Box 90)</li>
+      <li>Manufacturing in Denver, CO</li>
+      <li>International licensing opportunities offered since 2016 — current license map and disclosure available under NDA</li>
+    </ul>
+  </section>
+
+  <section class="block">
+    <h3>Product economics — why the 1:1,000 treat rate matters</h3>
+    <p>
+      LDL's defining commercial property is its concentration. One gallon of LDL is dosed into 1,000 gallons of diesel — substantially more concentrated than most aftermarket competitors.
+    </p>
+    <table class="matrix-compare">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Treat rate</th>
+          <th>For 1M gal/yr fleet</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="us">
+          <td>LDL (Longer Diesel Life)</td>
+          <td>1 : 1,000</td>
+          <td>1,000 gal additive</td>
+          <td>Founder-direct, EPA-registered</td>
+        </tr>
+        <tr>
+          <td>Power Service Diesel Kleen</td>
+          <td>1 : 400</td>
+          <td>2,500 gal additive</td>
+          <td>Cummins-endorsed retail leader</td>
+        </tr>
+        <tr>
+          <td>Stanadyne Performance Formula</td>
+          <td>1 : 480</td>
+          <td>2,083 gal additive</td>
+          <td>Premium OEM-stamped</td>
+        </tr>
+        <tr>
+          <td>Howes Diesel Treat</td>
+          <td>1 : 640</td>
+          <td>1,563 gal additive</td>
+          <td>Anti-gel category leader</td>
+        </tr>
+        <tr>
+          <td>Schaeffer's Diesel Treat 2000 (summer)</td>
+          <td>1 : 4,000</td>
+          <td>250 gal additive</td>
+          <td>Direct-fleet rep model</td>
+        </tr>
+        <tr>
+          <td>Hot Shot's Secret EDT</td>
+          <td>1 : 3,200</td>
+          <td>313 gal additive</td>
+          <td>Enthusiast-channel concentrated</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top: 16px; font-size: 13px; color: #6b7785;">
+      Concentration translates directly into lower shipping, storage, and handling cost per treated gallon — the primary lever in fleet RFP economics.
+    </p>
+  </section>
+
+  <section class="block">
+    <h3>Customer base &amp; use cases</h3>
+    <p style="color: #6b7785; font-style: italic;">
+      Named customer logos and case studies are available to accredited investors under NDA. Below are the verticals LDL has historically served:
+    </p>
+    <div class="risk-grid" style="margin-top: 8px;">
+      <div class="risk" style="background: #f0f8ff; border-left-color: #0a4d8c;">
+        <h5 style="color: #0a4d8c;">Commercial trucking</h5>
+        <p>Class 8 OTR fleets seeking lower per-gallon-treated cost vs. retail-channel additives.</p>
+      </div>
+      <div class="risk" style="background: #f0f8ff; border-left-color: #0a4d8c;">
+        <h5 style="color: #0a4d8c;">Construction &amp; mining</h5>
+        <p>Off-road diesel for heavy equipment, generator fleets, and remote sites.</p>
+      </div>
+      <div class="risk" style="background: #f0f8ff; border-left-color: #0a4d8c;">
+        <h5 style="color: #0a4d8c;">Agriculture</h5>
+        <p>Farm-tractor diesel, irrigation pumps, ag-tank storage stability.</p>
+      </div>
+      <div class="risk" style="background: #f0f8ff; border-left-color: #0a4d8c;">
+        <h5 style="color: #0a4d8c;">Standby &amp; backup power</h5>
+        <p>Emergency generators, data center backup, hospital/utility critical fuel.</p>
+      </div>
+      <div class="risk" style="background: #f0f8ff; border-left-color: #0a4d8c;">
+        <h5 style="color: #0a4d8c;">Marine &amp; locomotive</h5>
+        <p>Marine diesel, locomotive fuel — long storage windows benefit from stabilization.</p>
+      </div>
+      <div class="risk" style="background: #f0f8ff; border-left-color: #0a4d8c;">
+        <h5 style="color: #0a4d8c;">International licensing</h5>
+        <p>Active licensing opportunities in Africa, Middle East, Central/South America (since 2016).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h3>Token structure</h3>
+    <p style="color: #6b7785;">
+      The LDL Token represents a beneficial interest in a special-purpose vehicle (SPV) that holds rights to a defined share of net revenue from LDL sales. Token holders receive proportional distributions on a scheduled cadence. Terms below are indicative — final terms will be set in the offering memorandum.
+    </p>
+    <table class="terms">
+      <tr><td>Structure</td><td>Revenue-share security token <span class="tbd">indicative</span></td></tr>
+      <tr><td>Underlying asset</td><td>Defined % of Oil Service Fuels net LDL revenue</td></tr>
+      <tr><td>Regulatory exemption</td><td>Reg D 506(c) (US accredited, public solicitation OK) + Reg S (offshore) <span class="tbd">indicative</span></td></tr>
+      <tr><td>Distribution frequency</td><td>Quarterly <span class="tbd">indicative</span></td></tr>
+      <tr><td>Lockup</td><td>12 months from issuance (Rule 144) <span class="tbd">indicative</span></td></tr>
+      <tr><td>Secondary market</td><td>Regulated ATS (Securitize Markets / tZERO / INX) <span class="tbd">indicative</span></td></tr>
+      <tr><td>Target raise</td><td><span class="tbd">TBD</span></td></tr>
+      <tr><td>Yield target</td><td>10-12% APY (private-credit RWA band; above T-bill tokens ~3.5%) <span class="tbd">indicative</span></td></tr>
+      <tr><td>Tranching</td><td>Optional senior (8-9% target) / junior (14-16% target) split <span class="tbd">indicative</span></td></tr>
+      <tr><td>SEC category</td><td>Category 1 (issuer-sponsored digital security) per Mar 17 2026 SEC/CFTC guidance</td></tr>
+      <tr><td>Audit</td><td>Annual financial audit; revenue verified by transfer agent <span class="tbd">indicative</span></td></tr>
+    </table>
+  </section>
+
+  <section class="block">
+    <h3>How the LDL Token compares to RWA peers</h3>
+    <p style="color: #6b7785;">
+      Most existing tokenized revenue / private-credit RWAs offer exposure to crypto-native lending pools or short-duration assets. The LDL Token is differentiated by a 45-year industrial cash-flow history — not a fresh credit cohort.
+    </p>
+    <table class="matrix-compare">
+      <thead>
+        <tr>
+          <th>Platform / token</th>
+          <th>Asset class</th>
+          <th>Backing track record</th>
+          <th>Investor base</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="us">
+          <td>LDL Token (this offering)</td>
+          <td>Industrial revenue share (diesel additive)</td>
+          <td>45 yrs, EPA reg., not depleting</td>
+          <td>Accredited (Reg D 506(c) + Reg S)</td>
+        </tr>
+        <tr>
+          <td>Goldfinch Prime</td>
+          <td>Institutional private credit (Apollo / Ares / Golub)</td>
+          <td>9-12% net</td>
+          <td>Accredited / crypto-native</td>
+        </tr>
+        <tr>
+          <td>Centrifuge</td>
+          <td>Asset-backed pools (invoices, receivables, structured credit)</td>
+          <td>5-12% APY; $1.34B TVL</td>
+          <td>Crypto-native + institutional</td>
+        </tr>
+        <tr>
+          <td>Maple Finance</td>
+          <td>Overcollateralized crypto-backed institutional lending</td>
+          <td>10-12% Blue Chip / 15-20% High Yield; $1B+ TVL</td>
+          <td>Institutional + accredited</td>
+        </tr>
+        <tr>
+          <td>Ondo Finance (USDY / OUSG)</td>
+          <td>Tokenized US Treasuries / money-market</td>
+          <td>~3.5% APY; $2.75B TVL</td>
+          <td>Mass-affluent + accredited</td>
+        </tr>
+        <tr>
+          <td>Elmnts (oil &amp; gas royalties)</td>
+          <td>Tokenized oil/gas mineral rights, Chevron-operated land</td>
+          <td>20%+ advertised (carries decline risk LDL does not)</td>
+          <td>Verified accredited</td>
+        </tr>
+        <tr>
+          <td>Mineral Vault</td>
+          <td>Oil &amp; gas royalty interests, producing wells</td>
+          <td>Variable royalty distributions</td>
+          <td>Verified accredited</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="block">
+    <h3>Risk factors</h3>
+    <div class="risk-grid">
+      <div class="risk">
+        <h5>Revenue concentration</h5>
+        <p>LDL sales are concentrated across a relatively small commercial customer base. Loss of a major account would materially affect distributions.</p>
+      </div>
+      <div class="risk">
+        <h5>Regulatory / EPA</h5>
+        <p>Changes to EPA fuel-additive registration requirements, ULSD spec, or biofuel-blending mandates could affect formula compatibility.</p>
+      </div>
+      <div class="risk">
+        <h5>Competitive displacement</h5>
+        <p>Roll-up activity in the additive space (Aurora Capital / Lubrication Engineers consolidation) may compress fleet-channel pricing through 2026-2028.</p>
+      </div>
+      <div class="risk">
+        <h5>OEM endorsement gap</h5>
+        <p>LDL does not currently hold Cummins / CAT / Detroit Diesel formal endorsements. Procurement-driven fleets may require these. Active mitigation: pursuing independent L-10 / N-14 / BOCLE testing.</p>
+      </div>
+      <div class="risk">
+        <h5>Founder concentration</h5>
+        <p>Operations are tightly coupled to a single principal (Alan Epler, President). Succession and key-person risk should be documented in offering disclosures.</p>
+      </div>
+      <div class="risk">
+        <h5>Token liquidity</h5>
+        <p>Secondary-market trading depends on a regulated ATS. Liquidity is expected to be substantially below public equities. 12-month lockup applies.</p>
+      </div>
+      <div class="risk">
+        <h5>Audit cadence</h5>
+        <p>Revenue distributions depend on accurate, timely accounting. Annual audit is planned; investors should understand the reporting cadence before subscribing.</p>
+      </div>
+      <div class="risk">
+        <h5>Tokenization regulatory evolution</h5>
+        <p>SEC enforcement and Treasury guidance on RWA tokenization continue to evolve. Future changes may affect transferability or accredited-investor scope.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="cta">
+    <h3>Request the data room</h3>
+    <p>For accredited investors: financials, audit, customer list, formula chemistry summary, and indicative offering terms available under NDA.</p>
+    <a class="btn" href="mailto:investors@oilservicefuels.com?subject=LDL%20Token%20-%20Data%20Room%20Request">Email Investor Relations</a>
+    <div class="contact">Direct: Alan Epler, President · (303) 579-5700</div>
+  </div>
+
+</div>
+
+<div class="disclosure">
+  <strong>Important disclosures.</strong> This page is for informational purposes only and does not constitute an offer to sell or a solicitation of an offer to buy any securities. Any offering of the LDL Token will be made only pursuant to a formal offering memorandum, subscription agreement, and applicable Form D or other securities filings. The LDL Token is intended for accredited investors as defined under SEC Rule 501(a). Past performance is not indicative of future results. Revenue figures, treat-rate claims, and operational statistics shown above are unaudited company representations subject to verification under the offering process. All terms marked <span class="tbd">indicative</span> are subject to change.
+</div>
+
+<footer>
+  LDL Token investor view · Generated 2026-05-13 · Updated each pipeline cycle
+</footer>
+
+</body>
+</html>
