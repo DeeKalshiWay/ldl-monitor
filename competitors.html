@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LDL Competitor Monitor</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+         margin: 0; background: #f4f6f8; color: #1a2332; }
+  header { background: #0a4d8c; color: white; padding: 24px 32px; }
+  header h1 { margin: 0 0 4px 0; font-size: 22px; }
+  header .meta { font-size: 13px; opacity: 0.85; }
+  header nav { margin-top: 12px; display: flex; gap: 16px; font-size: 13px; }
+  header nav a { color: white; opacity: 0.7; text-decoration: none; padding: 4px 10px;
+                  border-radius: 12px; }
+  header nav a:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+  header nav a.current { opacity: 1; background: rgba(255,255,255,0.15); font-weight: 600; }
+  .container { max-width: 1300px; margin: 0 auto; padding: 24px; }
+  .stats { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+          flex: 1; min-width: 140px; }
+  .stat .num { font-size: 28px; font-weight: 700; color: #0a4d8c; }
+  .stat .label { font-size: 12px; color: #6b7785; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .controls { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+              display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .controls input, .controls select {
+      padding: 8px 12px; border: 1px solid #d4dae0; border-radius: 6px; font-size: 14px; }
+  .controls input[type="search"] { flex: 1; min-width: 200px; }
+  .controls label { font-size: 13px; color: #6b7785; font-weight: 500; }
+  table { width: 100%; background: white; border-collapse: collapse; border-radius: 8px;
+          overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  th { background: #eef2f6; text-align: left; padding: 12px; font-size: 12px;
+       text-transform: uppercase; letter-spacing: 0.5px; color: #6b7785; cursor: pointer; user-select: none; }
+  th:hover { background: #e4eaf0; }
+  th .arrow { opacity: 0.4; margin-left: 4px; }
+  th.sort-active .arrow { opacity: 1; color: #0a4d8c; }
+  td { padding: 12px; border-top: 1px solid #eef2f6; vertical-align: top; font-size: 14px; }
+  tr.competitor-row { cursor: pointer; }
+  tr.competitor-row:hover { background: #fafbfc; }
+  tr.detail-row { display: none; background: #fafbfc; }
+  tr.detail-row.expanded { display: table-row; }
+  tr.detail-row td { padding: 16px 24px; border-top: none; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .detail-block h4 { margin: 0 0 6px 0; font-size: 11px; color: #6b7785;
+                      text-transform: uppercase; letter-spacing: 0.5px; }
+  .detail-block ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+  .detail-block p { margin: 0; font-size: 13px; line-height: 1.5; color: #1a2332; }
+  .name { font-weight: 700; color: #0a4d8c; font-size: 15px; }
+  .name a { color: inherit; text-decoration: none; }
+  .name a:hover { text-decoration: underline; }
+  .parent { color: #6b7785; font-size: 12px; margin-top: 2px; }
+  .tier { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px;
+          font-weight: 600; letter-spacing: 0.3px; }
+  .tier.t1 { background: #fde8e8; color: #b91c1c; }     /* Tier 1 = biggest threat */
+  .tier.t2 { background: #fef3c7; color: #92400e; }
+  .tier.t3 { background: #e0f2fe; color: #075985; }
+  .tier.t4 { background: #f3f4f6; color: #4b5563; }
+  .channels { font-size: 12px; color: #4a5765; }
+  .treat-rate { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; color: #1a2332; }
+  .strength { color: #2c7a47; font-size: 12px; }
+  .weakness { color: #b91c1c; font-size: 12px; }
+  .expand-icon { font-family: monospace; color: #6b7785; font-size: 14px;
+                  display: inline-block; width: 12px; transition: transform 0.15s; }
+  tr.competitor-row.expanded .expand-icon { transform: rotate(90deg); }
+  .empty { text-align: center; padding: 60px 20px; color: #6b7785; }
+  footer { text-align: center; padding: 24px; color: #6b7785; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>LDL Competitor Monitor</h1>
+  <div class="meta">Oil Service Fuels, Inc. — Longer Diesel Life® · Last refreshed: <span id="last-refreshed">—</span></div>
+  <nav>
+    <a href="index.html">Leads</a>
+    <a href="competitors.html" class="current">Competitors</a>
+    <a href="battlecard.html">Battlecard</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="stats">
+    <div class="stat"><div class="num" id="stat-total">0</div><div class="label">Tracked Competitors</div></div>
+    <div class="stat"><div class="num" id="stat-t1">0</div><div class="label">Tier 1 (Direct)</div></div>
+    <div class="stat"><div class="num" id="stat-publicly-priced">0</div><div class="label">Publicly Priced</div></div>
+    <div class="stat"><div class="num" id="stat-oem">0</div><div class="label">With OEM Approvals</div></div>
+  </div>
+
+  <div class="controls">
+    <input type="search" id="search" placeholder="Search name, product, or positioning…">
+    <label>Tier:
+      <select id="filter-tier">
+        <option value="">All</option>
+        <option value="1">Tier 1 (Direct)</option>
+        <option value="2">Tier 2 (Established)</option>
+        <option value="3">Tier 3 (Performance)</option>
+        <option value="4">Tier 4 (Specialty/Regional)</option>
+      </select>
+    </label>
+    <label>Channel:
+      <select id="filter-channel">
+        <option value="">All</option>
+        <option value="retail">Retail (TSC, Walmart, AutoZone)</option>
+        <option value="fleet">Fleet/B2B</option>
+        <option value="direct">Direct/Distributor</option>
+        <option value="online">Online</option>
+      </select>
+    </label>
+  </div>
+
+  <table id="comp-table">
+    <thead>
+      <tr>
+        <th data-sort="tier">Tier<span class="arrow">↕</span></th>
+        <th data-sort="name">Competitor<span class="arrow">↕</span></th>
+        <th data-sort="parent">Parent<span class="arrow">↕</span></th>
+        <th data-sort="flagship">Flagship Product<span class="arrow">↕</span></th>
+        <th data-sort="treat_rate">Treat Rate<span class="arrow">↕</span></th>
+        <th data-sort="positioning">Positioning<span class="arrow">↕</span></th>
+      </tr>
+    </thead>
+    <tbody id="comp-body"></tbody>
+  </table>
+</div>
+
+<footer>Auto-generated by ldl_monitor · competitors.py rebuilds this page each cycle</footer>
+
+<script src="data.js"></script>
+<script>
+// LAST_REFRESHED and COMPETITORS provided by data.js
+
+function escapeHTML(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+function tierClass(t) { return 't' + t; }
+
+function channelList(c) {
+  if (!c || !c.length) return '<span style="color:#999">unknown</span>';
+  return c.map(ch => escapeHTML(ch)).join(' · ');
+}
+
+const state = { sortKey: 'tier', sortDir: 'asc', search: '', tier: '', channel: '' };
+
+function matchesChannel(comp, key) {
+  if (!key) return true;
+  const haystack = (comp.distribution || []).join(' ').toLowerCase();
+  if (key === 'retail') return /walmart|tractor supply|autozone|amazon|retail/.test(haystack);
+  if (key === 'fleet')  return /fleet|b2b|trucking|commercial/.test(haystack);
+  if (key === 'direct') return /direct|distributor|jobber|founder/.test(haystack);
+  if (key === 'online') return /online|e-commerce|website|amazon/.test(haystack);
+  return true;
+}
+
+function render() {
+  document.getElementById('last-refreshed').textContent = LAST_REFRESHED || '—';
+
+  let rows = COMPETITORS.filter(c => {
+    if (state.tier && String(c.tier) !== state.tier) return false;
+    if (!matchesChannel(c, state.channel)) return false;
+    if (state.search) {
+      const q = state.search.toLowerCase();
+      const blob = `${c.name} ${c.parent} ${c.flagship} ${c.positioning} ${(c.where_they_win||[]).join(' ')}`.toLowerCase();
+      if (!blob.includes(q)) return false;
+    }
+    return true;
+  });
+
+  rows.sort((a, b) => {
+    const av = a[state.sortKey] ?? '';
+    const bv = b[state.sortKey] ?? '';
+    if (typeof av === 'number' && typeof bv === 'number') return state.sortDir === 'asc' ? av - bv : bv - av;
+    return state.sortDir === 'asc'
+      ? String(av).localeCompare(String(bv))
+      : String(bv).localeCompare(String(av));
+  });
+
+  document.getElementById('stat-total').textContent = COMPETITORS.length;
+  document.getElementById('stat-t1').textContent = COMPETITORS.filter(c => c.tier === 1).length;
+  document.getElementById('stat-publicly-priced').textContent =
+    COMPETITORS.filter(c => c.public_pricing).length;
+  document.getElementById('stat-oem').textContent =
+    COMPETITORS.filter(c => (c.certifications || []).length > 0).length;
+
+  const body = document.getElementById('comp-body');
+  if (rows.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" class="empty">No competitors match these filters.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map((c, i) => `
+    <tr class="competitor-row" data-idx="${i}">
+      <td><span class="tier ${tierClass(c.tier)}">T${c.tier}</span></td>
+      <td>
+        <div class="name">
+          <span class="expand-icon">▸</span>
+          ${c.website ? `<a href="${escapeHTML(c.website)}" target="_blank" onclick="event.stopPropagation()">${escapeHTML(c.name)}</a>` : escapeHTML(c.name)}
+        </div>
+        <div class="parent">${escapeHTML(c.headquarters || '')}</div>
+      </td>
+      <td>${escapeHTML(c.parent || '—')}</td>
+      <td>${escapeHTML(c.flagship || '—')}</td>
+      <td class="treat-rate">${escapeHTML(c.treat_rate || '—')}</td>
+      <td>${escapeHTML(c.positioning || '—')}</td>
+    </tr>
+    <tr class="detail-row" data-idx="${i}">
+      <td colspan="6">
+        <div class="detail-grid">
+          <div class="detail-block">
+            <h4>Where They Win</h4>
+            <ul>${(c.where_they_win || []).map(w => `<li>${escapeHTML(w)}</li>`).join('') || '<li>—</li>'}</ul>
+          </div>
+          <div class="detail-block">
+            <h4>Where LDL Wins</h4>
+            <ul>${(c.where_ldl_wins || []).map(w => `<li>${escapeHTML(w)}</li>`).join('') || '<li>—</li>'}</ul>
+          </div>
+          <div class="detail-block">
+            <h4>Distribution</h4>
+            <p class="channels">${channelList(c.distribution)}</p>
+          </div>
+          <div class="detail-block">
+            <h4>Target Customer</h4>
+            <p>${escapeHTML((c.target_customers || []).join(', ') || '—')}</p>
+          </div>
+          <div class="detail-block">
+            <h4>OEM / Certifications</h4>
+            <p>${escapeHTML((c.certifications || []).join(', ') || '—')}</p>
+          </div>
+          <div class="detail-block">
+            <h4>Pricing</h4>
+            <p>${escapeHTML(c.pricing || 'unknown')}</p>
+          </div>
+          <div class="detail-block" style="grid-column: 1 / -1;">
+            <h4>Recent Activity</h4>
+            <p>${escapeHTML(c.recent_news || '—')}</p>
+          </div>
+          <div class="detail-block" style="grid-column: 1 / -1;">
+            <h4>Customer Sentiment</h4>
+            <p>${escapeHTML(c.sentiment || '—')}</p>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('tr.competitor-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const idx = row.dataset.idx;
+      const detail = document.querySelector(`tr.detail-row[data-idx="${idx}"]`);
+      const wasOpen = detail.classList.contains('expanded');
+      detail.classList.toggle('expanded');
+      row.classList.toggle('expanded');
+    });
+  });
+
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.toggle('sort-active', th.dataset.sort === state.sortKey);
+    const arrow = th.querySelector('.arrow');
+    if (th.dataset.sort === state.sortKey) arrow.textContent = state.sortDir === 'asc' ? '↑' : '↓';
+    else arrow.textContent = '↕';
+  });
+}
+
+document.querySelectorAll('th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+    else { state.sortKey = key; state.sortDir = 'asc'; }
+    render();
+  });
+});
+document.getElementById('search').addEventListener('input', e => { state.search = e.target.value; render(); });
+document.getElementById('filter-tier').addEventListener('change', e => { state.tier = e.target.value; render(); });
+document.getElementById('filter-channel').addEventListener('change', e => { state.channel = e.target.value; render(); });
+
+render();
+</script>
+</body>
+</html>

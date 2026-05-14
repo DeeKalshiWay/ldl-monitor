@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LDL Competitive Battlecard</title>
+<style>
+  :root {
+    --bg-primary: #0a0d14;
+    --bg-elevated: #0f131c;
+    --bg-surface: #161b28;
+    --bg-hover: #1e2536;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.18);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.72);
+    --text-muted: rgba(255,255,255,0.5);
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --you-win: #10b981;
+    --they-win: #ef4444;
+    --tie: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+         margin: 0; background: var(--bg-primary); color: var(--text-primary);
+         min-height: 100vh; }
+  header { background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+           padding: 24px 32px; }
+  header h1 { margin: 0 0 4px 0; font-size: 22px; }
+  header .meta { font-size: 13px; color: var(--text-muted); }
+  header nav { margin-top: 12px; display: flex; gap: 16px; font-size: 13px; }
+  header nav a { color: var(--text-secondary); text-decoration: none; padding: 4px 10px;
+                  border-radius: 12px; }
+  header nav a:hover { background: var(--bg-hover); color: var(--text-primary); }
+  header nav a.current { background: var(--accent); color: white; font-weight: 600; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border);
+          margin-bottom: 20px; overflow-x: auto; }
+  .tab { padding: 12px 18px; background: transparent; color: var(--text-secondary);
+         border: none; cursor: pointer; font-size: 14px; font-weight: 500;
+         border-bottom: 2px solid transparent; white-space: nowrap;
+         transition: color 150ms, border-color 150ms; }
+  .tab:hover { color: var(--text-primary); }
+  .tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Matrix */
+  .matrix-wrap { background: var(--bg-elevated); border: 1px solid var(--border);
+                 border-radius: 12px; overflow: hidden; }
+  .matrix { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .matrix th { background: var(--bg-surface); color: var(--text-secondary);
+               text-align: left; padding: 12px; font-size: 11px;
+               text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+               border-bottom: 1px solid var(--border); }
+  .matrix td { padding: 14px 12px; border-top: 1px solid var(--border);
+               vertical-align: top; }
+  .matrix tr:hover td { background: var(--bg-hover); }
+  .matrix .name-cell { font-weight: 600; color: var(--text-primary); min-width: 180px; }
+  .matrix .name-cell .parent { font-weight: 400; color: var(--text-muted);
+                                  font-size: 11px; margin-top: 2px; }
+  .matrix .flagship-cell { color: var(--text-secondary); max-width: 260px; }
+  .matrix .treat-cell { font-family: 'SF Mono', Menlo, Consolas, monospace;
+                         font-size: 12px; color: var(--text-secondary); }
+  .matrix .pricing-cell { font-family: 'SF Mono', Menlo, Consolas, monospace;
+                           font-size: 12px; color: var(--text-secondary); }
+  .matrix .position-cell { color: var(--text-secondary); font-size: 12px;
+                            line-height: 1.4; max-width: 320px; }
+
+  .tier-badge { display: inline-block; padding: 2px 8px; border-radius: 12px;
+                font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
+                text-transform: uppercase; }
+  .tier-1 { background: rgba(239,68,68,0.18); color: #fca5a5; }
+  .tier-2 { background: rgba(245,158,11,0.18); color: #fcd34d; }
+  .tier-3 { background: rgba(59,130,246,0.18); color: #93c5fd; }
+  .tier-4 { background: rgba(156,163,175,0.18); color: #d1d5db; }
+
+  /* Tier section cards */
+  .tier-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .battlecard-section { background: var(--bg-elevated); border: 1px solid var(--border);
+                          border-radius: 12px; padding: 24px; }
+  .bc-head { display: flex; align-items: flex-start; justify-content: space-between;
+              gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+  .bc-head h3 { margin: 0; font-size: 18px; }
+  .bc-head .website { font-size: 12px; color: var(--accent); text-decoration: none; }
+  .bc-head .website:hover { text-decoration: underline; }
+  .bc-meta-row { display: flex; gap: 24px; flex-wrap: wrap; font-size: 12px;
+                  color: var(--text-muted); margin-bottom: 16px; }
+  .bc-meta-row span strong { color: var(--text-secondary); font-weight: 500; }
+
+  .bc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .bc-block h4 { margin: 0 0 8px 0; font-size: 11px; color: var(--text-muted);
+                  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  .bc-block ul { margin: 0; padding-left: 18px; font-size: 13px;
+                  line-height: 1.55; color: var(--text-secondary); }
+  .bc-block ul li { margin-bottom: 4px; }
+  .bc-block.you-win h4 { color: var(--you-win); }
+  .bc-block.they-win h4 { color: var(--they-win); }
+  .bc-block p { margin: 0; font-size: 13px; color: var(--text-secondary);
+                 line-height: 1.5; }
+  .bc-tracks { background: var(--bg-surface); border-radius: 8px; padding: 16px;
+                margin-top: 16px; }
+  .bc-tracks h4 { margin: 0 0 10px 0; font-size: 11px; color: var(--accent);
+                   text-transform: uppercase; letter-spacing: 0.5px; }
+  .bc-tracks .track { margin-bottom: 14px; }
+  .bc-tracks .track:last-child { margin-bottom: 0; }
+  .bc-tracks .track-label { font-size: 11px; color: var(--text-muted);
+                              text-transform: uppercase; letter-spacing: 0.4px;
+                              font-weight: 600; margin-bottom: 4px; }
+  .bc-tracks .track-body { font-size: 13px; color: var(--text-primary);
+                             line-height: 1.5; }
+
+  .news-callout { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+                    border-radius: 8px; padding: 12px 14px; margin-top: 16px;
+                    font-size: 12px; color: #fca5a5; }
+  .news-callout strong { color: #fca5a5; }
+
+  /* Summary section at top */
+  .summary { background: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(16,185,129,0.08));
+              border: 1px solid var(--border-strong); border-radius: 12px;
+              padding: 24px; margin-bottom: 20px; }
+  .summary h2 { margin: 0 0 12px 0; font-size: 16px; }
+  .summary ul { margin: 0; padding-left: 20px; font-size: 13px;
+                line-height: 1.6; color: var(--text-secondary); }
+  .summary ul li strong { color: var(--text-primary); }
+
+  footer { text-align: center; padding: 32px; color: var(--text-muted); font-size: 12px;
+           border-top: 1px solid var(--border); margin-top: 32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>LDL Competitive Battlecard</h1>
+  <div class="meta">Oil Service Fuels, Inc. — Longer Diesel Life® · 20 competitors · Generated: <span id="gen-date">2026-05-13</span></div>
+  <nav>
+    <a href="index.html">Leads</a>
+    <a href="competitors.html">Competitors</a>
+    <a href="battlecard.html" class="current">Battlecard</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="summary">
+    <h2>Strategic takeaways</h2>
+    <ul>
+      <li><strong>OEM-endorsement gap:</strong> Only Power Service and Stanadyne hold formal Cummins endorsement. LDL is positioned equally to most competitors — pursuing even one OEM letter of no-objection is a real wedge.</li>
+      <li><strong>Concentrate economics:</strong> LDL's 1:1,000 treat rate beats every competitor except Schaeffer's #137SUM (1:4,000 summer) and Hot Shot's EDT (1:3,200). At fleet scale, $/gallon-treated wins RFPs.</li>
+      <li><strong>M&amp;A disruption windows:</strong> Star Tron (sold to Recochem Feb 2026) and Royal Purple industrial (sold to LE April 2025) are both mid-integration. Customer relationships are softest during these windows.</li>
+      <li><strong>Aurora/LE roll-up threat:</strong> Aurora Capital is building a multi-brand specialty platform under LE (Royal Purple industrial + RSC Bio + SWEPCO). Expect aggressive fleet expansion through 2026.</li>
+      <li><strong>Brand vulnerabilities to attack:</strong> Lucas / Sea Foam / Star Tron / Royal Purple all carry persistent "snake oil" skepticism on Cummins / Duramax / TruckersReport forums. Position LDL on third-party validation + procurement spec compliance.</li>
+    </ul>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="matrix">Comparison Matrix</button>
+    <button class="tab" data-tab="tier-1">Tier 1 — Direct Threats</button>
+    <button class="tab" data-tab="tier-2">Tier 2 — Established</button>
+    <button class="tab" data-tab="tier-3">Tier 3 — Performance/B2B</button>
+    <button class="tab" data-tab="tier-4">Tier 4 — Specialty/Regional</button>
+  </div>
+
+  <section id="matrix" class="tab-content active">
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Tier</th>
+            <th>Competitor</th>
+            <th>Flagship</th>
+            <th>Treat Rate</th>
+            <th>$/gal treated</th>
+            <th>Positioning</th>
+          </tr>
+        </thead>
+        <tbody id="matrix-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tier-1" class="tab-content"><div class="tier-grid" id="tier-1-body"></div></section>
+  <section id="tier-2" class="tab-content"><div class="tier-grid" id="tier-2-body"></div></section>
+  <section id="tier-3" class="tab-content"><div class="tier-grid" id="tier-3-body"></div></section>
+  <section id="tier-4" class="tab-content"><div class="tier-grid" id="tier-4-body"></div></section>
+
+</div>
+
+<footer>
+  Auto-generated competitive intelligence · Source: web research May 2026 · Refresh monthly or before major deals
+</footer>
+
+<script src="data.js"></script>
+<script>
+// Per-competitor talk tracks, objections, and landmine questions.
+// Keyed by name to map onto the COMPETITORS array.
+const TALK_TRACKS = {
+  "Power Service Products": {
+    early_mention: "If Power Service comes up early, acknowledge their distribution moat — don't fight on shelf presence. Pivot: 'Diesel Kleen is the safe default at retail. We're built for fleets that want better economics than retail markup allows — 2.5x more concentrated, EPA-registered, direct from the manufacturer.'",
+    displacement: "If they already use Diesel Kleen, ask: 'When did you last recalculate your $/gallon-treated cost? With our 1:1,000 treat rate vs PS's 1:400, most fleets find 30-40% savings without losing the cetane-boost story.'",
+    late_addition: "If PS gets added to eval late: 'Power Service's lubricity numbers lag Opti-Lube in published wear-scar tests, and their cetane claim is +8 by their own spec — we publish independent validation. Ask them for current third-party lubricity data.'",
+    objections: [
+      { q: "Cummins specifically endorses Power Service.", a: "Correct — and Stanadyne. Three of the five top trucking-forum recommendations don't have Cummins endorsement, including Schaeffer's, which most Class 8 fleets rate higher than PS. Endorsement matters for procurement, but the field uses what performs." },
+      { q: "We can buy PS at any truck stop.", a: "If you're paying retail at truck stops, you're paying about 2x what you'd pay at fleet pricing. Bulk procurement of LDL eliminates that markup entirely — your drivers don't need to chase additives on the road." }
+    ],
+    landmines: [
+      "What's your current $/gallon-treated cost on Power Service?",
+      "When was the last time PS reformulated Diesel Kleen?",
+      "How are you handling the lubricity gap that's documented in Bosch HPCR-injector studies?"
+    ]
+  },
+  "Howes Products": {
+    early_mention: "Howes' winter dominance is real — don't dispute it. Pivot: 'Howes wins on winter anti-gel. But you're running fuel 12 months a year, and forum users report 1-2 mpg loss with Howes. Our year-round single-product approach removes the seasonal switch.'",
+    displacement: "If they run Howes seasonally: 'How are you handling lubricity in the summer when you're not on Howes? Most fleets that switch to LDL year-round see consistent injector wear-scar numbers across all seasons.'",
+    late_addition: "Late-stage Howes consideration: 'Ask Howes about their tow guarantee redemption rate — forum threads documenting claim difficulty go back a decade. Your fleet's reliability story should not depend on a third-party tow.'",
+    objections: [
+      { q: "Howes is the cheapest national brand.", a: "Per-gallon-treated, yes — about $0.07 vs our $0.05-0.08 range depending on volume. But Howes' base is 40-70% middle distillates (kerosene). At 1:1,000, you're paying for chemistry, not solvent." },
+      { q: "We've used Howes for 30 years.", a: "And for 30 years, fuel chemistry has changed dramatically — ULSD, biodiesel blending, HPCR injectors. The Howes formula is largely the same. Worth a controlled comparison." }
+    ],
+    landmines: [
+      "What's your seasonal switch process between Howes and your summer additive?",
+      "Has anyone ever successfully collected on the Howes tow guarantee in your operation?",
+      "What's your wear-scar data on injectors during Howes-only seasons?"
+    ]
+  },
+  "Stanadyne Performance Formula": {
+    early_mention: "Stanadyne's OEM list is genuinely the strongest. Acknowledge: 'Stanadyne has the most OEM approvals in the category — that's the right product if procurement requires it. If it doesn't, you're paying ~$0.12-0.16/gal-treated vs our $0.05-0.10 for similar performance.'",
+    displacement: "Cerberus ownership context: 'Stanadyne went through a $35M restructuring and ownership change in August 2023. New owner, new cost structure. We've heard mixed reports on continued product investment — worth asking your rep what the 2026 R&D roadmap is.'",
+    late_addition: "If procurement pushed Stanadyne late: 'Run the math on the per-gallon-treated cost across your annual fuel volume. The OEM-approval premium typically adds $20K-100K/year for mid-size fleets without measurable performance delta.'",
+    objections: [
+      { q: "Stanadyne MAKES the injectors — they know what works.", a: "Stanadyne is one injector OEM, and Cummins/Bosch/Denso make the rest. The 9.6% MPG claim is widely viewed as inflated even by Stanadyne loyalists. Trust the OEM approvals; question the marketing." },
+      { q: "Our shops are set up on Stanadyne already.", a: "Switching is friction, granted. Most LDL evaluations start as parallel trials — run a vehicle or two on LDL while the rest stay on Stanadyne. Lubricity and injector data after 60 days makes the call." }
+    ],
+    landmines: [
+      "What did Stanadyne's ownership change mean for your supply contract?",
+      "Has Stanadyne shared their independent lubricity benchmarks against the BOCLE test recently?",
+      "What's the actual MPG delta you're measuring — not what the bottle claims?"
+    ]
+  },
+  "Hot Shot's Secret": {
+    early_mention: "Hot Shot's is enthusiast-strong but procurement-weak. Pivot: 'Hot Shot's wins in the pickup-enthusiast world. For commercial fleets, three things to verify: published third-party lubricity, formal OEM acceptance, and contract pricing at fleet volume. Their 1:3,200 dosing is dramatic — make sure it's validated for your conditions.'",
+    displacement: "If they're using EDT: 'EDT works as a preventative — but its 1 oz / 25 gal dose math draws skepticism even on BobIsTheOilGuy. We can run a 90-day side-by-side and look at injector deposits at end of trial. Hot Shot's hasn't published a comparable head-to-head.'",
+    late_addition: "Gold Eagle context: 'Hot Shot's was acquired by Gold Eagle in 2022 — they own STA-BIL, HEET, 303. Brand attention is split across a wider portfolio post-acquisition. Continuity of R&D investment in the diesel line is worth asking about.'",
+    objections: [
+      { q: "EDT is the cheapest additive on the market per gallon treated.", a: "If 1 oz really treats 25 gallons at the performance you need, yes. The mechanic and trucking forums are split — informed buyers test side-by-side before committing fleet volume. We'd welcome the comparison." },
+      { q: "Stiction Eliminator is the best oil additive out there.", a: "Stiction Eliminator is genuinely strong — that's an oil additive, separate problem. LDL is a fuel additive specialist. If you have a stiction issue on a 6.0 PowerStroke, run both products simultaneously." }
+    ],
+    landmines: [
+      "What's your validation methodology for the 1:3,200 treat rate at your operating conditions?",
+      "Has Hot Shot's published an OEM acceptance letter for any Class 8 engine builder?",
+      "What's your contracted bulk price on EDT — and what's Gold Eagle's volume discount structure?"
+    ]
+  },
+  "Opti-Lube": {
+    early_mention: "Opti-Lube wins on lubricity test scores — that's their narrow moat. 'Opti-Lube is genuinely the lab-test leader for wear-scar reduction. Procurement-wise, they're a tiny operation in Orem, Utah running out of a Low Range Off-Road back office. For sustained fleet supply, the operational risk is real.'",
+    displacement: "If they're sold on Opti-Lube: 'Have you seen the DieselPlace threads on algae/biological growth in Opti-Lube jugs? It's a stability issue that doesn't show up in fresh-product testing. For long-storage scenarios, that matters.'",
+    late_addition: "Late-stage Opti-Lube: 'Lab-test wins are real but narrow. Lubricity is one of 6-8 properties that matter in a fleet additive. Ask Opti-Lube for the rest of the chemistry sheet — detergency, cetane, water demulsification, biocide, anti-gel.'",
+    objections: [
+      { q: "Opti-Lube wins every wear-scar test I've seen.", a: "On fresh product, in controlled lab conditions, with the BOCLE method — yes. Wear-scar is one of eight or so properties that matter in fleet use. The algae/stability concerns are real for stored fuel scenarios." },
+      { q: "Their cult following on Ford-Trucks must mean something.", a: "It means they have the best informed-enthusiast story. Enthusiast and fleet purchasing have different constraints. For 50+ trucks running across multiple terminals, supply reliability and procurement spec matter as much as lab-test wins." }
+    ],
+    landmines: [
+      "What's Opti-Lube's annual fleet contract capacity?",
+      "How are you handling the algae/biological growth threads on DieselPlace?",
+      "What other test results does Opti-Lube publish besides wear-scar?"
+    ]
+  }
+};
+
+const COMP_DATA = window.COMPETITORS || null;
+</script>
+
+<script>
+// Load competitor data from competitors.html's data — embedded inline for self-containment.
+// Keep this in sync with competitors.html (or have the generator emit both from one source).
+const COMPETITORS_BC = [];  // populated below
+</script>
+
+
+<script>
+// Since browsers can't load <script src> from .html files reliably, we inline a minimal
+// extract function: fetch competitors.html, parse the COMPETITORS array out of it.
+function loadCompetitorData() {
+  return window.COMPETITORS || [];
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+function renderMatrix(competitors) {
+  const body = document.getElementById('matrix-body');
+  competitors.sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+  body.innerHTML = competitors.map(c => `
+    <tr>
+      <td><span class="tier-badge tier-${c.tier}">T${c.tier}</span></td>
+      <td class="name-cell">
+        ${c.website ? `<a href="${esc(c.website)}" target="_blank" style="color:inherit;text-decoration:none">${esc(c.name)}</a>` : esc(c.name)}
+        <div class="parent">${esc(c.parent || '')}</div>
+      </td>
+      <td class="flagship-cell">${esc(c.flagship || '—')}</td>
+      <td class="treat-cell">${esc(c.treat_rate || '—')}</td>
+      <td class="pricing-cell">${esc(c.pricing || '—')}</td>
+      <td class="position-cell">${esc(c.positioning || '—')}</td>
+    </tr>
+  `).join('');
+}
+
+function renderTierTab(tier, competitors) {
+  const body = document.getElementById(`tier-${tier}-body`);
+  const subset = competitors.filter(c => c.tier === tier);
+  body.innerHTML = subset.map(c => renderBattlecardSection(c)).join('');
+}
+
+function renderBattlecardSection(c) {
+  const tracks = TALK_TRACKS[c.name];
+  return `
+    <div class="battlecard-section">
+      <div class="bc-head">
+        <div>
+          <h3>${esc(c.name)}
+            <span class="tier-badge tier-${c.tier}" style="margin-left:8px;">T${c.tier}</span>
+          </h3>
+          <div style="margin-top:4px; font-size:12px; color: var(--text-muted);">
+            ${esc(c.parent || '')} · ${esc(c.headquarters || '')}
+          </div>
+        </div>
+        ${c.website ? `<a href="${esc(c.website)}" class="website" target="_blank">${esc(c.website.replace(/^https?:\/\//, ''))} ↗</a>` : ''}
+      </div>
+
+      <div class="bc-meta-row">
+        <span><strong>Flagship:</strong> ${esc(c.flagship || '—')}</span>
+        <span><strong>Treat rate:</strong> ${esc(c.treat_rate || '—')}</span>
+        <span><strong>Pricing:</strong> ${esc(c.pricing || '—')}</span>
+      </div>
+
+      <div class="bc-grid">
+        <div class="bc-block they-win">
+          <h4>Where they win</h4>
+          <ul>${(c.where_they_win || []).map(w => `<li>${esc(w)}</li>`).join('')}</ul>
+        </div>
+        <div class="bc-block you-win">
+          <h4>Where LDL wins</h4>
+          <ul>${(c.where_ldl_wins || []).map(w => `<li>${esc(w)}</li>`).join('')}</ul>
+        </div>
+        <div class="bc-block">
+          <h4>Target customers</h4>
+          <p>${esc((c.target_customers || []).join(', ') || '—')}</p>
+        </div>
+        <div class="bc-block">
+          <h4>Distribution</h4>
+          <p>${esc((c.distribution || []).join(' · ') || '—')}</p>
+        </div>
+        <div class="bc-block" style="grid-column: 1 / -1;">
+          <h4>OEM / certifications</h4>
+          <p>${esc((c.certifications || []).join(' · ') || '—')}</p>
+        </div>
+        <div class="bc-block" style="grid-column: 1 / -1;">
+          <h4>Customer sentiment</h4>
+          <p>${esc(c.sentiment || '—')}</p>
+        </div>
+      </div>
+
+      ${c.recent_news ? `<div class="news-callout"><strong>Recent activity:</strong> ${esc(c.recent_news)}</div>` : ''}
+
+      ${tracks ? `
+      <div class="bc-tracks">
+        <h4>Talk tracks</h4>
+        <div class="track">
+          <div class="track-label">Early mention</div>
+          <div class="track-body">${esc(tracks.early_mention)}</div>
+        </div>
+        <div class="track">
+          <div class="track-label">Displacement</div>
+          <div class="track-body">${esc(tracks.displacement)}</div>
+        </div>
+        <div class="track">
+          <div class="track-label">Late-stage add</div>
+          <div class="track-body">${esc(tracks.late_addition)}</div>
+        </div>
+      </div>
+
+      <div class="bc-tracks">
+        <h4>Objection handling</h4>
+        ${tracks.objections.map(o => `
+          <div class="track">
+            <div class="track-label">"${esc(o.q)}"</div>
+            <div class="track-body">${esc(o.a)}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="bc-tracks">
+        <h4>Landmine questions to ask</h4>
+        <ul style="margin:0; padding-left: 20px; color: var(--text-primary); line-height: 1.6;">
+          ${tracks.landmines.map(l => `<li>${esc(l)}</li>`).join('')}
+        </ul>
+      </div>
+      ` : `
+      <div style="margin-top: 16px; font-size: 12px; color: var(--text-muted); font-style: italic;">
+        Detailed talk tracks available for Tier 1 competitors. For this competitor, focus on the "Where LDL wins" points above when handling objections.
+      </div>
+      `}
+    </div>
+  `;
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Boot
+(async function() {
+  const competitors = await loadCompetitorData();
+  if (!competitors.length) {
+    document.getElementById('matrix-body').innerHTML =
+      '<tr><td colspan="6" style="padding:40px; text-align:center; color: var(--text-muted);">No competitor data loaded. Make sure competitors.html is in the same directory.</td></tr>';
+    return;
+  }
+  renderMatrix(competitors);
+  renderTierTab(1, competitors);
+  renderTierTab(2, competitors);
+  renderTierTab(3, competitors);
+  renderTierTab(4, competitors);
+})();
+</script>
+
+</body>
+</html>
