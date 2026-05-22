@@ -264,24 +264,59 @@ const TALK_TRACKS = {
       "How are you handling the algae/biological growth threads on DieselPlace?",
       "What other test results does Opti-Lube publish besides wear-scar?"
     ]
+  },
+  "Lucas Oil Products": {
+    early_mention: "Lucas is the most recognized name in the room — don't argue brand awareness. Pivot: 'Lucas is everywhere because of NASCAR and the retail shelf, but it's a consumer-DIY and powersports brand. We're built for Class 8 fleet economics — a different buyer with different math.'",
+    displacement: "If they run Lucas: 'Lucas Anti-Gel is a fine winter add for a pickup. What are you running the other nine months, and what's your injector wear-scar data on it? Fleets that consolidate onto LDL year-round stop juggling a separate winter and summer SKU.'",
+    late_addition: "If Lucas gets added late on brand familiarity: 'The heavy-duty diesel community is blunt about Lucas additives — Cummins and Duramax forums route people to Power Service, Stanadyne, or Opti-Lube over Lucas. Ask for the Class 8 fleet references and the OEM spec list.'",
+    objections: [
+      { q: "Everyone knows Lucas — it's on every shelf.", a: "Recognition is real, but it's built on race sponsorship and consumer retail, not fleet performance data. Lucas isn't on Cummins' endorsed list and isn't positioned as a Class 8 all-in-one. Brand halo doesn't lower your per-gallon-treated cost." },
+      { q: "Lucas is cheap and we already buy their oil and grease.", a: "The ~$0.05/gal figure is their winter anti-gel — one job, not a year-round detergent/lubricity/cetane package. Bundling with their oil line is convenient procurement, but it isn't an injector-protection program. Worth a 60-day side-by-side on wear-scar." }
+    ],
+    landmines: [
+      "Where's the Class 8 injector wear-scar data on the Lucas product you're running?",
+      "Is Lucas on your engine OEM's recommended additive spec?",
+      "What do your techs see in the Cummins/Duramax forums about Lucas for heavy-duty use?"
+    ]
+  },
+  "Star Tron (Star brite)": {
+    early_mention: "Star Tron owns marine — concede that fast. Pivot: 'Star Tron is the default on the water, and the enzyme story sells there. For on-highway Class 8 it's a different conversation — enzyme treatment isn't a detergent/cetane/lubricity package, and the diesel-truck forums are skeptical of it for fleet use.'",
+    displacement: "If they're on Star Tron: 'The enzyme angle is a marketing differentiator, not a substitute for HPCR-injector detergency. And they're mid-integration — Recochem just bought them in February 2026, their second owner in under four years. Supply terms and rep coverage are exactly what slips during an ownership change.'",
+    late_addition: "If Star Tron is added late: 'Ask them what the Recochem acquisition changes for your contract and your rep, then ask for non-marine, Class 8 validation — most of their proof points come from boats and stored fuel, not over-the-road trucks.'",
+    objections: [
+      { q: "The enzyme technology breaks down water and sludge — it's different.", a: "It's a genuine differentiator in marine and stored-fuel tanks. For an over-the-road fleet running fresh fuel weekly, the job is detergency, lubricity, and cetane — and that's where chemical packages get measured. The enzyme claim draws 'snake oil' pushback on the diesel-truck forums for a reason." },
+      { q: "At maintenance dose it's incredibly cheap per gallon.", a: "The 1:96 concentrate math looks great on paper. The question is what you get per treated gallon — Star Tron is light on cetane and cold-flow versus a dedicated fleet additive. Cheap doesn't help if you add a second product to cover the gaps." }
+    ],
+    landmines: [
+      "What does the Recochem acquisition change for your supply contract and your rep?",
+      "What Class 8 over-the-road validation exists — not marine or generator?",
+      "How are you covering cetane and cold-flow that the enzyme formula doesn't address?"
+    ]
+  },
+  "Royal Purple (Max-Tane)": {
+    early_mention: "Royal Purple carries a premium synthetic-oil halo — acknowledge the brand, separate the product. 'Royal Purple is a respected oil brand. Max-Tane is a consumer performance additive, though — high dose, high cost, aimed at enthusiast pickups, not fleets. The halo comes from the lubricants, not the diesel additive.'",
+    displacement: "If they're using Max-Tane: 'Run the per-gallon-treated math. At a 1:5 to 1:2 dose, Max-Tane lands around $0.15-0.20/gal treated — 3 to 4x our range. That's an enthusiast's price, not a fleet's, and the metal-can dispenser doesn't scale to a fuel-island workflow.'",
+    late_addition: "If Max-Tane is pushed late: 'Note the strategic signal — Calumet sold Royal Purple's industrial business to LE in April 2025 for $110M and kept only the consumer side. The fleet-relevant investment left the building; what remains is a retail performance brand.'",
+    objections: [
+      { q: "Royal Purple is a premium brand — it must be good.", a: "The synthetic-oil reputation is earned. The diesel additive is a different product, and cost-conscious diesel forums (TDIClub among them) call Max-Tane overpriced for what it delivers. There are no OEM approvals behind it. Premium packaging isn't a procurement spec." },
+      { q: "Our drivers like the performance bump.", a: "Enthusiasts do report a subjective MPG bump — anecdotal, on a heavy dose, at a premium price. For a fleet, the question is documented wear-scar and cetane per treated gallon, plus a dispensing method that works at a fuel island. Max-Tane's strengths are aimed at the weekend driver, not the terminal." }
+    ],
+    landmines: [
+      "What's your per-gallon-treated cost on Max-Tane at the dose you actually run?",
+      "Does Max-Tane carry any engine-OEM approval for your fleet?",
+      "How do you dispense a metal-can consumer product across a fleet fuel island?"
+    ]
   }
 };
-
-const COMP_DATA = window.COMPETITORS || null;
 </script>
 
 <script>
-// Load competitor data from competitors.html's data — embedded inline for self-containment.
-// Keep this in sync with competitors.html (or have the generator emit both from one source).
-const COMPETITORS_BC = [];  // populated below
-</script>
-
-
-<script>
-// Since browsers can't load <script src> from .html files reliably, we inline a minimal
-// extract function: fetch competitors.html, parse the COMPETITORS array out of it.
+// data.js declares `const COMPETITORS` and `const LAST_REFRESHED`. A top-level `const` creates a
+// global *lexical* binding that is NOT exposed as a property of `window` — so (like competitors.html)
+// we reference the binding by name, with a typeof guard, rather than reading `window.COMPETITORS`.
 function loadCompetitorData() {
-  return window.COMPETITORS || [];
+  if (typeof COMPETITORS !== 'undefined' && Array.isArray(COMPETITORS)) return COMPETITORS;
+  return (typeof window !== 'undefined' && window.COMPETITORS) || [];
 }
 
 function esc(s) {
@@ -296,7 +331,7 @@ function renderMatrix(competitors) {
     <tr>
       <td><span class="tier-badge tier-${c.tier}">T${c.tier}</span></td>
       <td class="name-cell">
-        ${c.website ? `<a href="${esc(c.website)}" target="_blank" style="color:inherit;text-decoration:none">${esc(c.name)}</a>` : esc(c.name)}
+        ${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">${esc(c.name)}</a>` : esc(c.name)}
         <div class="parent">${esc(c.parent || '')}</div>
       </td>
       <td class="flagship-cell">${esc(c.flagship || '—')}</td>
@@ -326,7 +361,7 @@ function renderBattlecardSection(c) {
             ${esc(c.parent || '')} · ${esc(c.headquarters || '')}
           </div>
         </div>
-        ${c.website ? `<a href="${esc(c.website)}" class="website" target="_blank">${esc(c.website.replace(/^https?:\/\//, ''))} ↗</a>` : ''}
+        ${c.website ? `<a href="${esc(c.website)}" class="website" target="_blank" rel="noopener noreferrer">${esc(c.website.replace(/^https?:\/\//, ''))} ↗</a>` : ''}
       </div>
 
       <div class="bc-meta-row">
@@ -418,10 +453,13 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 // Boot
 (async function() {
+  const genEl = document.getElementById('gen-date');
+  if (genEl && typeof LAST_REFRESHED !== 'undefined') genEl.textContent = LAST_REFRESHED;
+
   const competitors = await loadCompetitorData();
   if (!competitors.length) {
     document.getElementById('matrix-body').innerHTML =
-      '<tr><td colspan="6" style="padding:40px; text-align:center; color: var(--text-muted);">No competitor data loaded. Make sure competitors.html is in the same directory.</td></tr>';
+      '<tr><td colspan="6" style="padding:40px; text-align:center; color: var(--text-muted);">No competitor data loaded. Make sure data.js is in the same directory.</td></tr>';
     return;
   }
   renderMatrix(competitors);
