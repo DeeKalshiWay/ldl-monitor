@@ -1,5 +1,9 @@
 # Runtime state (regenerated each run)
 .ldl_state.json
+lead_monitor.log
+
+# Local secrets (SAM_API_KEY, SMTP creds, etc.) - read by refresh_leads.ps1
+.env.local
 
 # Python
 __pycache__/
